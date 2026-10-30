@@ -1,0 +1,51 @@
+name: Integration Tests and Simulated CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: Install, check, and integration test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run integration tests
+        run: npm run test:integration
+
+  simulated-deployment:
+    name: Build and simulate deployment
+    runs-on: ubuntu-latest
+    needs: integration
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Build deployment artifact
+        run: npm run build
+      - name: Create simulated deployment manifest
+        run: npm run deploy:simulate
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulated-backend-release
+          path: dist/
